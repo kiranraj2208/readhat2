@@ -10,6 +10,7 @@ from keras.models import load_model
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
+from flask import send_from_directory
 
 model = load_model('model_num_latest.hdf5')
 model._make_predict_function()
@@ -124,12 +125,14 @@ def show_res(query):
     elif score >= -1:
         sc = -1 * (-1) - 0.2
     sc = round(sc, 1)
-    d = sorted(data[sc], key=lambda k: data[sc][k])
+    d = sorted(data[sc], key=lambda k: data[sc][k], reverse=True)
     selected = []
     arr_len = 10 if 10 < len(d) else len(d)
-    for k in range(0, arr_len):
+    for k in range(0, len(data[sc])):
         if data[sc][d[k]] > 0:
             selected.append(d[k])
+        if len(selected) >= 10:
+            break
 
     for k in selected:
         d.remove(k)
@@ -142,8 +145,10 @@ def show_res(query):
 
 
 def update_priority(feedback):
-    print(data)
     feedback[1] = float(feedback[1])
+    print(data[feedback[1]])
+    if feedback[0] not in data[feedback[1]].keys():
+        data[feedback[1]][feedback[0]] = 0
     if feedback[2] == 1:
         data[feedback[1]][feedback[0]] += pos
     else:
@@ -168,7 +173,7 @@ def create_output_page(arr, score):
         value = "<tr><td>" + str(i) + "</td><td>" + str(arr[i]) + "</td></tr>"
         strTable = strTable + value
 
-    strTable = strTable + "</table><br><br><form action='{{ url_for(\"changepriority\") }}' method='POST'><center>which one did you select    <input type='text' name='priority'>" + "<input name='score' type='hidden' value='" + str(score) + "'>" + "<br>was it helpful    <input type='text' name='helpful'></center><input type='submit'></form></body></html>"
+    strTable = strTable + "</table><br><br><form action='/changepriority' method='POST'><center>which one did you select    <input type='text' name='priority'>" + "<input name='score' type='hidden' value='" + str(score) + "'>" + "<br>was it helpful    <input type='text' name='helpful'></center><input type='submit'></form></body></html>"
 
 
     hs = open("templates/HTMLTable.html", 'w')
@@ -192,8 +197,10 @@ def getdata():
     op,c=show_res(l)
     print(op, c)
     create_output_page(op, c)
-
-    return render_template('HTMLTable.html')
+    f = open('templates/HTMLTable.html', 'r')
+    print(f.readline())
+    #return render_template('HTMLTable.html')
+    return send_from_directory('./templates/','HTMLTable.html')
 
 @app.route('/changepriority',methods=['POST'])
 def changepriority():
